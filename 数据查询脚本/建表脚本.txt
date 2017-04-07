@@ -1,0 +1,61 @@
+-- Create table
+create table DBCONSOLE_DATASOURCE
+(
+  dbconsole_datasource_id VARCHAR2(32) not null,
+  dburl                   VARCHAR2(128),
+  driver_class            VARCHAR2(128),
+  username                VARCHAR2(64),
+  pwd                     VARCHAR2(64),
+  dbtype                  CHAR(1),
+  sid                     VARCHAR2(32),
+  ts                      CHAR(19)
+)
+
+-- Create table
+create table DBCONSOLE_QUERY_LOG
+(
+  dbconsole_query_log_id VARCHAR2(32) not null,
+  exc_reasons            VARCHAR2(1024),
+  excsql                 VARCHAR2(1024),
+  exc_staus              CHAR(1),
+  operator_id            VARCHAR2(32),
+  ts                     CHAR(19),
+  audit_status           CHAR(1) default 1,
+  audit_time             CHAR(19),
+  audit_exp              VARCHAR2(1024),
+  auditor                VARCHAR2(64),
+  excdb_id               VARCHAR2(32) not null,
+  to_auditor             CHAR(32)
+)
+
+-- Create table
+create table DB_USER
+(
+  db_user_id CHAR(32) not null,
+  user_name  VARCHAR2(16),
+  password   VARCHAR2(64),
+  name       VARCHAR2(128),
+  sex        CHAR(1),
+  roleid     VARCHAR2(128),
+  db_source  VARCHAR2(128),
+  sms_role   VARCHAR2(32),
+  ts         DATE default sysdate,
+  delflag    CHAR(1) default 0
+)
+
+-- Create table
+create table MT_FUNCTION_INFO
+(
+  id             NUMBER not null,
+  function_code  VARCHAR2(40),
+  function_value VARCHAR2(40) not null,
+  function_url   VARCHAR2(200),
+  status         NUMBER not null,
+  function_type  VARCHAR2(2),
+  function_id    NUMBER,
+  pri            NUMBER,
+  create_date    DATE,
+  update_date    DATE,
+  version        NUMBER default '0' not null,
+  description    VARCHAR2(60)
+)
