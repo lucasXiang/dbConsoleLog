@@ -1,0 +1,12 @@
+CREATE TABLE `sms_template` (
+  `templateid` bigint(11) NOT NULL DEFAULT '0' COMMENT '模版ID',
+  `head` varchar(255) DEFAULT NULL COMMENT '模版标题',
+  `body` text NOT NULL COMMENT '模板内容',
+  `sendchannel` varchar(100) NOT NULL COMMENT '发送的逻辑通道',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  `createuser` varchar(30) DEFAULT NULL COMMENT '创建者',
+  `createtime` datetime DEFAULT NULL COMMENT '创建时间',
+  PRIMARY KEY (`templateid`),
+  UNIQUE KEY `SYS_C0012843` (`templateid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
