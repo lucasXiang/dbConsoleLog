@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.2//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tech.member.model.UserMagDao">
+	<resultMap type="com.tech.member.entity.ParentFuncInfo" id="functionThreeObj">
+		<id column="pid" property="pid" jdbcType="VARCHAR"/>
+		<result column="p_function_value" property="pfuncValue" jdbcType="VARCHAR"/>
+		<result column="p_function_url" property="pfuncUrl" jdbcType="VARCHAR"/>
+		<result column="p_pri" property="ppri" jdbcType="VARCHAR"/>
+		<collection property="chFuncObjs" ofType="com.tech.member.entity.FuncInfoObj" column="function_id">
+			<id column="id" property="id" jdbcType="VARCHAR"/>
+			<result column="function_value" property="funcValue" jdbcType="VARCHAR"/>
+			<result column="function_url" property="funcUrl" jdbcType="VARCHAR"/>
+			<result column="pri" property="pri" jdbcType="VARCHAR"/>
+		</collection>
+	</resultMap>
+	<select id="getFunTreeParams" resultMap="functionThreeObj">
+		select pf.id             pid,
+		       pf.function_value p_function_value,
+		       pf.pri            p_pri,
+		       cf.id,
+		       cf.function_value,
+		       cf.function_url,
+		       cf.pri
+		  from (select *
+		          from mt_function_info fi
+		         where fi.function_type = '99'
+		           and fi.function_id is not null) cf
+		 inner join (select *
+		               from mt_function_info fi
+		              where fi.function_type = '99'
+		                and fi.function_id is null) pf
+		    on cf.function_id = pf.id
+		 order by pf.id asc, cf.pri asc
+	</select>
+	<select id="ifHasUserName" parameterType="string" resultType="int">
+		select count(*) 
+		from db_user u 
+		where u.user_name = #{userName}
+	</select>
+	<select id="insertUserInfo" parameterType="com.tech.member.entity.RegistInfo">
+		insert into db_user (db_user_id,user_name,password,name,sex,roleid)
+		values(#{id},#{userName},#{password},#{name},#{sex},#{funParamsStr})
+	</select>
+</mapper>

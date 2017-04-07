@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.2//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tech.member.model.SmsTempDao">
+<!-- 数据库类型：mysql -->
+	<select id="getSmsTempInfos" parameterType="com.tech.member.entity.SmsTempObj" resultType="com.tech.member.entity.SmsTempObj">
+		select 
+			st.templateid templateId,
+			st.head,
+			st.body,
+			st.sendchannel sendChannel,
+			IF (
+				CHAR_LENGTH(st.remark) > 60,
+				CONCAT(
+					LEFT (st.remark, 60),
+					'...'
+				),st.remark
+			) as remark,
+			st.createuser createUser,
+			date_format(st.createtime,'%Y-%c-%d %H:%i:%s') createTime
+		from sms_template st
+		<where>
+			1=1
+			<if test="head != null and head != ''">and st.head=#{head}</if>
+			<if test="body != null and body != ''">and st.body like CONCAT('%',#{body},'%')</if>
+			<if test="sendChannel != null and sendChannel != ''">and st.sendchannel=#{sendChannel}</if>
+			<if test="type != null and type != ''">and st.sendchannel like CONCAT(#{type},'%')</if>
+			<if test="createUser != null and createUser != ''">and st.createuser=#{createUser}</if>
+			<if test="startTime != null and startTime != ''">and st.createtime &gt;= str_to_date(#{startTime},'%Y-%c-%d %H:%i:%s')</if>
+			<if test="endTime != null and endTime != ''">and st.createtime &lt;= str_to_date(#{endTime},'%Y-%c-%d %H:%i:%s')</if>
+		</where>
+		order by st.createtime DESC
+		LIMIT #{startRow},#{pageSize} 
+	</select>
+	<select id="countSmsTempInfos" parameterType="com.tech.member.entity.SmsTempObj" resultType="int">
+		select count(*) 
+		from sms_template st
+		<where>
+			1=1
+			<if test="head != null and head != ''">and st.head=#{head}</if>
+			<if test="body != null and body != ''">and st.body like CONCAT('%',#{body},'%')</if>
+			<if test="sendChannel != null and sendChannel != ''">and st.sendchannel=#{sendChannel}</if>
+			<if test="type != null and type != ''">and st.sendchannel like CONCAT(#{type},'%')</if>
+			<if test="createUser != null and createUser != ''">and st.createuser=#{createUser}</if>
+			<if test="startTime != null and startTime != ''">and st.createtime &gt;= str_to_date(#{startTime},'%Y-%c-%d %H:%i:%s')</if>
+			<if test="endTime != null and endTime != ''">and st.createtime &lt;= str_to_date(#{endTime},'%Y-%c-%d %H:%i:%s')</if>
+		</where>
+	</select>
+	<delete id="delSmsTempInfo" parameterType="int">
+		delete from sms_template where templateid = #{id}
+	</delete>
+	<insert id="insertSmsTemp" parameterType="com.tech.member.entity.SmsTempObj">
+		insert into sms_template(templateid,head,body,sendchannel,remark,createuser,createtime)
+		VALUES(
+			(select max(st.templateid)+1 from sms_template st where st.sendchannel like CONCAT(left(#{sendChannel},1),'%')),
+			#{head},
+			#{body},
+			#{sendChannel},
+			#{remark},
+			#{createUser},
+			SYSDATE()
+		)
+	</insert>
+	<select id="getSmsTempById" parameterType="string" resultType="com.tech.member.entity.SmsTempObj">
+		select 
+			st.templateid templateId,
+			st.head,
+			st.body,
+			st.sendchannel sendChannel,
+			st.remark,
+			st.createuser createUser,
+			date_format(st.createtime,'%Y-%c-%d %H:%i:%s') createTime
+		from sms_template st 
+		where st.templateid = #{templateId}
+	</select>
+	<update id="modifyOneSmsTemp" parameterType="com.tech.member.entity.SmsTempObj">
+		update sms_template set 
+			head=#{head},body=#{body},sendchannel=#{sendChannel},remark=#{remark},createuser=#{createUser},createtime=sysdate()
+		where templateid = #{templateId}
+	</update>
+	<select id="getSendChannels" resultType="map">
+		SELECT DISTINCT
+			st.SENDCHANNEL
+		FROM
+			sms_template st
+	</select>
+	
+</mapper>

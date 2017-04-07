@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="  
+         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd  
+            http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd  
+            http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd  
+            http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd">
+
+	<!-- 获取数据查询的sql保存数据源 -->
+	<!-- 开始 -->
+	<import resource="classpath*:/context/acms-client.xml" />
+	<bean class="com.uns.inf.acms.client.config.ConfigInitLoadingConfigurer"
+		parent="baseConfigurer" lazy-init="false">
+		<!-- 应用的名称 -->
+		<property name="appName" value="moto_manager" />
+		<!-- 应用的环境local、dev、sit、uat、prd -->
+		<property name="appEnv"
+			value="unspay-shoudan.moto_manager.local" />
+		<!--参数前缀去除 -->
+		<property name="prefixStripKeys">
+			<list>
+				<value>unspay-shoudan.moto_manager.local</value>
+			</list>
+		</property>
+		<!-- 必须以inf.acms,开头，多个以逗号隔开，inf.sms说明以 inf.sms自动加载 -->
+		<property name="keyPatterns"
+			value="inf.acms,unspay-shoudan.moto_manager.local" />
+	</bean>
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${datasource.driver}" />
+		<property name="jdbcUrl" value="${datasource.url}" />
+		<property name="user" value="${datasource.username}" />
+		<property name="password" value="${datasource.password}" />
+
+		<!-- 连接池中保留的最小连接数，默认为：3 建议3-->
+        <property name="minPoolSize" value="${c3p0.min_size}" />
+        <!--连接池中保留的最大连接数。默认值: 15建议30，根据业务可适当放大 -->
+        <property name="maxPoolSize" value="${c3p0.max_size}" />
+        <!-- 初始化连接池中的连接数，取值应在minPoolSize与maxPoolSize之间，默认为3建议3-->
+        <property name="initialPoolSize" value="${c3p0.initialPoolSize}" />
+        <!--最大空闲时间，60秒内未使用则连接被丢弃。若为0则永不丢弃。默认值: 0 建议60-->
+        <property name="maxIdleTime" value="${c3p0.max_idle_time}" />
+        <!--每3秒检查所有连接池中的空闲连接。默认值: 0，不检查建议60-->
+        <property name="idleConnectionTestPeriod" value="${c3p0.idle_test_period}" />
+	</bean>
+	<bean id="jdbcTemple" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource" ref="dataSource"></property>
+	</bean>
+	<!-- 结束 -->
+	
+	<!-- 获取短信模板管理的数据源 -->
+	<!-- 开始 -->
+	<context:property-placeholder location="classpath:conf/dataSources.properties"/><!-- 加载配置文件 -->
+	<bean id="smsDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${sms.driverClass}" />  
+	    <property name="jdbcUrl" value="${sms.dburl}" />  
+	    <property name="user" value="${sms.username}" />  
+	    <property name="password" value="${sms.pwd}" />
+	</bean>
+	<!-- 结束 -->
+	
+	<!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+	<!-- 配置sql查询控制数据保存的数据源 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<!-- 自动扫描mapping.xml文件 -->
+		<property name="mapperLocations" value="classpath:com/tech/member/model/sql/*-mapper.xml"></property>
+	</bean>
+	<!-- 配置短信模板数据源 -->
+	<bean id="smsTempSqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="smsDataSource" />
+		<!-- 自动扫描mapping.xml文件 -->
+		<property name="mapperLocations" value="classpath:com/tech/member/model/sql/*-sms2sql.xml"></property>
+	</bean>
+	
+	<!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.tech.member.model" />
+		<property name="markerInterface" value="com.tech.member.base.QueryConsoleMapper"></property>
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"></property>
+	</bean>
+	<!-- 扫描短信模板操作的 DBDao类 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.tech.member.model" />
+		<property name="markerInterface" value="com.tech.member.base.SmsTempMapper"></property>
+		<property name="sqlSessionFactoryBeanName" value="smsTempSqlSessionFactory"></property>
+	</bean>
+	
+	
+	<!-- 添加事物控制 -->
+	<!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<tx:advice id="txAdvice" transaction-manager="transactionManager">
+		<tx:attributes>
+			<tx:method name="*" propagation="REQUIRED" rollback-for="java.lang.Exception"/>
+		</tx:attributes>
+	</tx:advice>
+	<aop:config proxy-target-class="true">
+		<aop:advisor advice-ref="txAdvice" pointcut="within(com.tech.member..*)"/>
+	</aop:config>
+</beans>

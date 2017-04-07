@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.2//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tech.member.model.QuerySqlAuditDao">
+	<resultMap type="com.tech.member.entity.DBOperObj" id="ToAuditDBOperObjMap">
+		<id column="dbconsole_query_log_id" property="id" jdbcType="VARCHAR"/>
+		<result column="exc_reasons" property="excReasons" jdbcType="VARCHAR"/>
+		<result column="exc_staus" property="excStaus" jdbcType="VARCHAR"/>
+		<result column="excsql" property="excSql" jdbcType="VARCHAR"/>
+		<result column="ts" property="ts" jdbcType="VARCHAR"/>
+		<result column="operator_id" property="curUserId" jdbcType="VARCHAR"/>
+		<result column="audit_status" property="auditStatus" jdbcType="VARCHAR"/>
+		<result column="exc_dbid" property="excDbId" jdbcType="VARCHAR"/>
+		<association property="excDataSourceObj" javaType="com.tech.member.entity.ExcDataSourceObj">
+			<id column="dbconsole_datasource_id" property="id" jdbcType="VARCHAR"/>
+			<result column="dburl" property="dburl" jdbcType="VARCHAR"/>
+			<result column="driver_class" property="driverClass" jdbcType="VARCHAR"/>
+			<result column="username" property="username" jdbcType="VARCHAR"/>
+			<result column="pwd" property="pwd" jdbcType="VARCHAR"/>
+			<result column="dbtype" property="dbtype" jdbcType="VARCHAR"/>
+			<result column="sid" property="sid" jdbcType="VARCHAR"/>
+			<result column="exc_ts" property="ts" jdbcType="VARCHAR"/>
+		</association>
+		<association property="submitObj" javaType="com.tech.member.entity.UserObj">
+			<id column="operatorid" property="operid" jdbcType="VARCHAR"/>
+			<result column="operatornum" property="opernum" jdbcType="VARCHAR"/>
+			<result column="password" property="operpwd" jdbcType="VARCHAR"/>
+		</association>
+	</resultMap>
+	<select id="toAuditSqlInfoList" parameterType="com.tech.member.entity.QuerySqlAuditObj" resultMap="ToAuditDBOperObjMap">
+		select ww.dbconsole_query_log_id,ww.exc_reasons,ww.sid,ww.dbconsole_datasource_id,ww.dbtype,ww.excsql,ww.exc_staus,ww.operator_id,ww.ts,
+			   ww.operatorid,ww.operatornum,ww.audit_status
+		from (
+			select rownum r , w.*
+			from (
+				select  l.dbconsole_query_log_id,
+						l.exc_reasons,
+						db.dbconsole_datasource_id,
+						db.sid ,
+						db.dbtype,
+						case
+				         when length(l.excsql) > 150 then
+				          substr(l.excsql, 0, 150) || '...'
+				         else
+				          l.excsql
+				        end excsql,
+						l.exc_staus,
+						l.operator_id,
+						l.ts,
+						exc_op.db_user_id operatorid,
+						exc_op.user_name operatornum,
+						l.audit_status
+				from dbconsole_query_log l 
+					inner join dbconsole_datasource db on l.excdb_id=db.dbconsole_datasource_id 
+					inner join db_user exc_op on l.operator_id=exc_op.db_user_id and exc_op.delflag &lt;&gt; '1' 
+				 <where> l.to_auditor = #{curUserId} 
+				 	<if test="auditStatus != null and auditStatus != ''" >and l.audit_status = #{auditStatus} </if>
+				 	<if test="excReasons != null and excReasons != '' ">and l.exc_reasons like '%'||#{excReasons,jdbcType=VARCHAR}||'%'</if>
+				 	<if test="excStaus != null and excStaus != '' ">and l.exc_staus = #{excStaus}</if>
+				 	<if test="excDataSourId != null and excDataSourId != ''">
+						and db.dbconsole_datasource_id=#{excDataSourId} 
+					</if>
+					<if test="excOper != null and excOper != ''">and exc_op.user_name like '%'||#{excOper}||'%'</if>
+					<if test="startTime != null and startTime != ''">and to_date(l.ts,'yyyy-mm-dd hh24:mi:ss') &gt;= to_date(#{startTime},'yyyy-mm-dd hh24:mi:ss') </if>
+					<if test="endTime != null and endTime != ''">and to_date(l.ts,'yyyy-mm-dd hh24:mi:ss') &lt;= to_date(#{endTime},'yyyy-mm-dd hh24:mi:ss') </if>
+				 </where>
+				 order by l.ts desc
+			 ) w 
+		) ww 
+		where ww.r &gt; (#{pageNum}-1)*#{pageSize} and ww.r &lt; (#{pageNum}*#{pageSize}+1)
+	</select>
+	<select id="countToAuditSqlList" parameterType="com.tech.member.entity.QuerySqlAuditObj" resultType="int">
+		select count(l.dbconsole_query_log_id) n
+		 from dbconsole_query_log l 
+		 inner join dbconsole_datasource db on l.excdb_id=db.dbconsole_datasource_id 
+		 inner join db_user exc_op on l.operator_id=exc_op.db_user_id and exc_op.delflag &lt;&gt; '1' 
+		 <where>  l.to_auditor = #{curUserId} 
+		 	<if test="auditStatus != null and auditStatus != ''" >and l.audit_status = #{auditStatus} </if>
+		 	<if test="excReasons != null and excReasons != '' ">and l.exc_reasons like '%'||#{excReasons,jdbcType=VARCHAR}||'%'</if>
+		 	<if test="excStaus != null and excStaus != '' ">and l.exc_staus = #{excStaus}</if>
+		 	<if test="excDataSourId != null and excDataSourId != ''">
+				and db.dbconsole_datasource_id=#{excDataSourId} 
+			</if>
+			<if test="excOper != null and excOper != ''">and exc_op.user_name like '%'||#{excOper}||'%'</if>
+			<if test="startTime != null and startTime != ''">and to_date(l.ts,'yyyy-mm-dd hh24:mi:ss') &gt;= to_date(#{startTime},'yyyy-mm-dd hh24:mi:ss') </if>
+			<if test="endTime != null and endTime != ''">and to_date(l.ts,'yyyy-mm-dd hh24:mi:ss') &lt;= to_date(#{endTime},'yyyy-mm-dd hh24:mi:ss') </if>
+		 </where>
+	</select>
+	<update id="updateOneSqlAuditStatus" parameterType="com.tech.member.entity.QuerySqlAuditObj" >
+		update dbconsole_query_log l
+		   set l.audit_status = #{auditStatus},
+		       l.audit_time   = to_char(sysdate, 'yyyy-mm-dd hh24:mi:ss')
+		       <if test="auditExp != null and auditExp != ''">,l.audit_exp    = #{auditExp}</if>
+		       <if test="auditorId != null and auditorId != ''">,l.auditor      = #{auditorId}</if>
+		 where l.dbconsole_query_log_id = #{id}
+	</update>
+	
+</mapper>

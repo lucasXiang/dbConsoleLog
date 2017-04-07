@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.2//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tech.member.model.UserMagDao">
+	<resultMap type="com.tech.member.entity.ParentFuncInfo" id="functionThreeObj">
+		<id column="pid" property="pid" jdbcType="VARCHAR"/>
+		<result column="p_function_value" property="pfuncValue" jdbcType="VARCHAR"/>
+		<result column="p_function_url" property="pfuncUrl" jdbcType="VARCHAR"/>
+		<result column="p_pri" property="ppri" jdbcType="VARCHAR"/>
+		<collection property="chFuncObjs" ofType="com.tech.member.entity.FuncInfoObj" column="function_id">
+			<id column="id" property="id" jdbcType="VARCHAR"/>
+			<result column="function_value" property="funcValue" jdbcType="VARCHAR"/>
+			<result column="function_url" property="funcUrl" jdbcType="VARCHAR"/>
+			<result column="pri" property="pri" jdbcType="VARCHAR"/>
+		</collection>
+	</resultMap>
+	<select id="getFunTreeParams" resultMap="functionThreeObj">
+		select pf.id             pid,
+		       pf.function_value p_function_value,
+		       pf.pri            p_pri,
+		       cf.id,
+		       cf.function_value,
+		       cf.function_url,
+		       cf.pri
+		  from (select *
+		          from mt_function_info fi
+		         where fi.function_type = '99'
+		           and fi.function_id is not null) cf
+		 inner join (select *
+		               from mt_function_info fi
+		              where fi.function_type = '99'
+		                and fi.function_id is null) pf
+		    on cf.function_id = pf.id
+		 order by pf.id asc, cf.pri asc
+	</select>
+	<select id="ifHasUserName" parameterType="string" resultType="int">
+		select count(*) 
+		from db_user u 
+		where u.user_name = #{userName} and u.delflag &lt;&gt; '1' 
+	</select>
+	<select id="insertUserInfo" parameterType="com.tech.member.entity.RegistInfo">
+		insert into db_user (db_user_id,user_name,password,name,sex,roleid,db_source,sms_role,delflag,ts)
+		values(#{id},#{userName},#{password},#{name},#{sex},#{funParamsStr},#{dbSoursStr},#{funcMenusStr},'0',sysdate)
+	</select>
+	<select id="getDataSourceInfos" resultType="com.tech.member.entity.ExcDataSourceObj">
+		select db.dbconsole_datasource_id id,
+		       db.sid
+		 from dbconsole_datasource db
+	</select>
+	<select id="getUsersList" parameterType="com.tech.member.entity.UserInfo" resultType="com.tech.member.entity.UserInfo">
+		select ww.id,ww.userName,ww.name,ww.sex,ww.roleNames,ww.dbSids,ww.smsMenus from (
+			select rownum r , w.*
+			from (
+				select u.db_user_id id,
+				       u.user_name userName,
+				       u.name ,
+				       u.sex,
+				       (select LISTAGG(fi.function_value, ';') WITHIN GROUP(ORDER BY fi.id)
+				          from mt_function_info fi
+				         where fi.function_type = '99'
+				           and fi.function_id is not null
+				           and (u.roleid like '%,' || to_char(fi.id) || '%' or
+				               u.roleid like '%' || to_char(fi.id) || ',%' or
+				               u.roleid = to_char(fi.id))) roleNames,
+				       (select LISTAGG(db.sid, ';') within group(order by db.dbconsole_datasource_id)
+				          from dbconsole_datasource db
+				         where u.db_source like
+				               '%,' || to_char(db.dbconsole_datasource_id) || '%'
+				            or u.db_source like
+				               '%' || to_char(db.dbconsole_datasource_id) || ',%'
+				            or u.db_source = to_char(db.dbconsole_datasource_id)) dbSids,
+				       replace(replace(replace(u.sms_role, '0', '新增'), '1', '修改'),
+				               '2',
+				               '删除') smsMenus
+				  from db_user u
+				  <where> u.delflag &lt;&gt; '1' 
+				  	<if test="userName != null and userName != '' ">and u.user_name = #{userName} </if>
+				  	<if test="name != null and name != '' ">and u.name = #{name}</if>
+				  </where>
+				  ) w ) ww 
+		where ww.r &gt; (#{pageNum}-1)*#{pageSize} and ww.r &lt; (#{pageNum}*#{pageSize}+1)
+	</select>
+	<select id="countUsers" parameterType="com.tech.member.entity.UserInfo" resultType="int">
+		select count(u.db_user_id) cn 
+		  from db_user u 
+		  <where> u.delflag &lt;&gt; '1' 
+		  	<if test="userName != null and userName != '' ">and u.user_name = #{userName} </if>
+		  	<if test="name != null and name != '' ">and u.name = #{name} </if>
+		  </where>
+	</select>
+	<update id="updateUserDelflagById" parameterType="string">
+		update db_user set delflag='1' where db_user_id = #{userId} 
+	</update>
+</mapper>

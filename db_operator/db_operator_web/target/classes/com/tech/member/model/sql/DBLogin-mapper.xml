@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.2//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tech.member.model.DBLoginDao">
+	<select id="queryUserByUserMap" parameterType="com.tech.member.entity.UserParam" resultType="com.tech.member.entity.UserObj">
+		select u.db_user_id operid,u.user_name opernum,u.name,u.roleid funcIds
+		from db_user u 
+		where u.user_name = #{userId} and u.password = #{passWord} and u.delflag &lt;&gt; '1' 
+	</select>
+	<resultMap type="com.tech.member.entity.ParentFuncInfo" id="functionThreeObj">
+		<id column="pid" property="pid" jdbcType="VARCHAR"/>
+		<result column="p_function_value" property="pfuncValue" jdbcType="VARCHAR"/>
+		<result column="p_function_url" property="pfuncUrl" jdbcType="VARCHAR"/>
+		<result column="p_pri" property="ppri" jdbcType="VARCHAR"/>
+		<collection property="chFuncObjs" ofType="com.tech.member.entity.FuncInfoObj" column="function_id">
+			<id column="id" property="id" jdbcType="VARCHAR"/>
+			<result column="function_value" property="funcValue" jdbcType="VARCHAR"/>
+			<result column="function_url" property="funcUrl" jdbcType="VARCHAR"/>
+			<result column="pri" property="pri" jdbcType="VARCHAR"/>
+		</collection>
+	</resultMap>
+	<select id="getFunctionTreeByFuncIds" parameterType="string" resultMap="functionThreeObj">
+		select pf.id             pid,
+		       pf.function_value p_function_value,
+		       pf.pri            p_pri,
+		       cf.id,
+		       cf.function_value,
+		       cf.function_url,
+		       cf.pri
+		  from (select *
+		          from mt_function_info fi
+		         where fi.function_type = '99'
+		           and fi.function_id is not null) cf
+		 inner join (select *
+		               from mt_function_info fi
+		              where fi.function_type = '99'
+		                and fi.function_id is null) pf
+		    on cf.function_id = pf.id
+		 where (#{funcIds} like '%,'||TO_CHAR(cf.id)||'%') or (#{funcIds} like '%'||TO_CHAR(cf.id)||',%' ) or (TO_CHAR(cf.id) = #{funcIds})
+		 order by pf.id asc, cf.pri asc
+	</select>
+	<select id="getFuncMenusByUserId" parameterType="string" resultType="string">
+		select u.sms_role from db_user u
+ 		where u.db_user_id = #{id} and u.delflag &lt;&gt; '1' 
+	</select>
+</mapper>
